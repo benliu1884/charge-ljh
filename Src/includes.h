@@ -99,8 +99,8 @@ typedef unsigned int time_t;
 #define CL_FALSE                        0
 
 
-#define LOG(fmt,args...) do {    \
-    printf("%s (%d) "fmt,__func__, __LINE__, ##args); \
+#define LOG(fmt,args ...) do {    \
+    printf("%s (%d) "fmt, __func__, __LINE__, ##args); \
 }while(0)
 
 

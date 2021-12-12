@@ -6,8 +6,8 @@
 
 
 #define UART0_EN	1
-#define UART3_EN	0
-#define UART4_EN	0
+#define UART3_EN	1
+#define UART4_EN	1
 
 
 #define UART0_BUF_SIZE      128
