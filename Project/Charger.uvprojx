@@ -10,12 +10,12 @@
       <TargetName>Charger</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060422::V5.06 update 4 (build 422)::ARMCC</pCCUsed>
+      <pCCUsed>5060061::V5.06 update 1 (build 61)::ARMCC</pCCUsed>
       <TargetOption>
         <TargetCommonOption>
           <Device>ARMCM0</Device>
           <Vendor>ARM</Vendor>
-          <PackID>ARM.CMSIS.5.0.1</PackID>
+          <PackID>ARM.CMSIS.4.5.0</PackID>
           <PackURL>http://www.keil.com/pack/</PackURL>
           <Cpu>IROM(0x00000000,0x00040000) IRAM(0x20000000,0x00020000) CPUTYPE("Cortex-M0") CLOCK(12000000) ESEL ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
@@ -328,9 +328,6 @@
             <v6LangP>0</v6LangP>
             <vShortEn>0</vShortEn>
             <vShortWch>0</vShortWch>
-            <v6Lto>0</v6Lto>
-            <v6WtE>0</v6WtE>
-            <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define>HT501x</Define>
@@ -348,7 +345,6 @@
             <NoWarn>0</NoWarn>
             <uSurpInc>0</uSurpInc>
             <useXO>0</useXO>
-            <uClangAs>0</uClangAs>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define></Define>
@@ -409,6 +405,16 @@
               <FileType>1</FileType>
               <FilePath>..\Src\charger.c</FilePath>
             </File>
+            <File>
+              <FileName>tiny_aes.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\tiny_aes.c</FilePath>
+            </File>
+            <File>
+              <FileName>gcard.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\gcard.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -458,6 +464,21 @@
               <FileName>os_timer.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\BSP\os_timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>simspi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\BSP\simspi.c</FilePath>
+            </File>
+            <File>
+              <FileName>drv_ht1621.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\BSP\drv_ht1621.c</FilePath>
+            </File>
+            <File>
+              <FileName>ui_duanma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\BSP\ui_duanma.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -589,11 +610,5 @@
       </Groups>
     </Target>
   </Targets>
-
-  <RTE>
-    <apis/>
-    <components/>
-    <files/>
-  </RTE>
 
 </Project>

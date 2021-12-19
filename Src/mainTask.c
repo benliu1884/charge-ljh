@@ -15,6 +15,7 @@
 #include "includes.h"
 #include "sim_pwm.h"
 #include "uart.h"
+#include "gcard.h"
 
 static CP_TypeDef GetCPState( void );
 static void       CheckCP( void );
@@ -151,15 +152,6 @@ void ReadMeter( void )
         charger.gun[ 0 ].meter.current_an = ReadRMSI( 1 );
         charger.gun[ 0 ].meter.updateTime = OSTimeGet();
     }
-    //????--??2????30mA,????
-    //	static uint16_t Ims2;
-    //	Ims2 = ReadRMSI(2);
-    //	if(Ims2 > 30)
-    //	{
-    //		//charger.gun[0].faultState.BIT.fault_leakage = 1;
-    //		//????
-    //		//StopCharger(1,charger.gun[0].faultState.fault);
-    //	}
 }
 
 void FaultHandle( uint32_t currTime )
@@ -235,6 +227,8 @@ void FaultHandle( uint32_t currTime )
     //		charger.gun[0].faultState.BIT.fault_pe_break = 1;
     //	}
 
+    //TOD zhoumin - 测试
+    charger.gun[ 0 ].faultState.fault = 0;
     //有故障
     if ( charger.gun[ 0 ].faultState.fault != 0 ) {
         //		if(charger.gun[0].gunState != SysState_NONE)
@@ -364,44 +358,44 @@ void FaultHandle( uint32_t currTime )
             }
         } else if ( charger.gun[ 0 ].gunState == SysState_NONE )  //空闲状态
         {
-            printf( "SysState_NONE,LED_OFF(LED3|LED4)...\r\n" );
+            // printf( "SysState_NONE,LED_OFF(LED3|LED4)...\r\n" );
             LED_OFF( LED3 | LED4 );
         } else if ( charger.gun[ 0 ].gunState == SysState_WORKING )  //充电
         {
-            printf( "SysState_WORKING.\r\n" );
+            // printf( "SysState_WORKING.\r\n" );
             if ( charger.gun[ 0 ].meter.current_an < 200 ) {
-                printf( "charger.gun[0].meter.current_an < 200,LED_ON(LED3)...\r\n" );
+                // printf( "charger.gun[0].meter.current_an < 200,LED_ON(LED3)...\r\n" );
                 LED_ON( LED3 );
             } else if ( currTime - tick_charge >= 1000 ) {
                 tick_charge = currTime;
-                printf( "currTime - tick_charge >= 1000,LED_Toggle(LED3)...\r\n" );
+                // printf( "currTime - tick_charge >= 1000,LED_Toggle(LED3)...\r\n" );
                 LED_Toggle( LED3 );
             }
             if ( charger.gun[ 0 ].faultState.fault != 0 ) {
-                printf( "charger.gun[0].faultState.fault != 0,LED_OFF(LED3|LED4)...\r\n" );
+                // printf( "charger.gun[0].faultState.fault != 0,LED_OFF(LED3|LED4)...\r\n" );
                 LED_OFF( LED3 | LED4 );
             } else {
-                printf( "LED_OFF(LED2|LED3)...\r\n" );
+                // printf( "LED_OFF(LED2|LED3)...\r\n" );
                 LED_OFF( LED2 | LED3 );
                 Delay_mSec( 1200 );
-                printf( "LED_ON(LED1|LED3|LED4)...\r\n" );
+                // printf( "LED_ON(LED1|LED3|LED4)...\r\n" );
                 LED_ON( LED1 | LED3 | LED4 );
                 Delay_mSec( 1200 );
             }
         } else if ( charger.gun[ 0 ].gunState == SysState_FULL )  //充满
         {
-            printf( "charger.gun[0].gunState == SysState_FULL.\r\n" );
+            // printf( "charger.gun[0].gunState == SysState_FULL.\r\n" );
             if ( charger.gun[ 0 ].faultState.fault != 0 ) {
-                printf( "charger.gun[0].faultState.fault != 0,LED_OFF(LED3|LED4)...\r\n" );
+                // printf( "charger.gun[0].faultState.fault != 0,LED_OFF(LED3|LED4)...\r\n" );
                 LED_OFF( LED3 | LED4 );
             } else {
-                printf( "LED_OFF(LED2|LED3|LED4)...\r\n" );
+                // printf( "LED_OFF(LED2|LED3|LED4)...\r\n" );
                 LED_OFF( LED2 | LED3 | LED4 );
                 LED_ON( LED1 );
             }
         } else if ( charger.gun[ 0 ].gunState == SysState_Ready )  //插枪
         {
-            printf( "charger.gun[0].gunState == SysState_Ready.\r\n" );
+            // printf( "charger.gun[0].gunState == SysState_Ready.\r\n" );
             if ( charger.gun[ 0 ].faultState.fault != 0 ) {
                 printf( "LED_OFF(LED3|LED4)...\r\n" );
                 LED_OFF( LED3 | LED4 );
@@ -422,16 +416,15 @@ void vMainTask( void* argc )
 {
     uint32_t currTime = 0;
     uint32_t tick     = 0;
+    uint32_t tick_1s     = 0;
     charger_init      = 0;
+    CardInfo card;
     //电源指示灯
     charger.gun[ 0 ].meter.isVaild = 1;
     Delay_mSec( 500 );
     Feed_WDT();
     LED_ON( LED1 );
-    // debug begin
-    charger.gun[ 0 ].ChargerState = ChargerState_STOPING;
-    charger.gun[ 0 ].gunState     = SysState_NONE;
-    // debug end
+    printf("..............system start..............\r\n");
     while ( 1 ) {
         currTime = OSTimeGet();
         if ( currTime > 2000 ) {
@@ -449,10 +442,18 @@ void vMainTask( void* argc )
             FaultHandle( currTime );
         }
 
+        if (currTime - tick_1s >= 1000) {
+            tick_1s = currTime;
+            // card_read(&card);
+        }
+
         //检测CP状态
         CheckCP();
         //充电处理
         ChargerTask();
+
+        extern void ui_display_loop(uint32_t tick);
+        ui_display_loop(tick);
 
         //		//电表校准测试函数
         //		if(flag_cal)

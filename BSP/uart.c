@@ -4,13 +4,12 @@
 
 #if UART0_EN
 static void         UART0_Init( uint32_t rate );
-static __IO uint8_t UART0_RxBuff[ UART0_BUF_SIZE ] = { 0 };
+// static __IO uint8_t UART0_RxBuff[ UART0_BUF_SIZE ] = { 0 };
 UART_INFO_STR       gUart0Handle;
 #endif
 
 #if UART3_EN
 static void UART3_Init( uint32_t rate );
-//	static __IO uint8_t UART3_RxBuff[UART3_BUF_SIZE] = {0};
 UART_INFO_STR gUart3Handle;
 #endif
 
@@ -54,7 +53,8 @@ void UART0_Init( uint32_t rate )
 
     HT_UART_Init( HT_UART0, &UART_InitStructure );
 
-    HT_UART_ITConfig( HT_UART0, UART_UARTCON_TXIE | UART_UARTCON_RXIE, ENABLE );
+    // HT_UART_ITConfig( HT_UART0, UART_UARTCON_TXIE | UART_UARTCON_RXIE, ENABLE );
+    HT_UART_ITConfig( HT_UART0, UART_UARTCON_TXIE, ENABLE );
 
     NVIC_ClearPendingIRQ( UART0_IRQn );
     NVIC_SetPriority( UART0_IRQn, 0 );
@@ -63,8 +63,8 @@ void UART0_Init( uint32_t rate )
     //接收缓存区初始化
     gUart0Handle.sysAddr   = HT_UART0;
     gUart0Handle.SendState = 0;
-    FIFO_S_Init( &gUart0Handle.rxFIFO, ( void* )UART0_RxBuff, sizeof( UART0_RxBuff ) );
-    FIFO_S_Flush( &gUart0Handle.rxFIFO );
+    // FIFO_S_Init( &gUart0Handle.rxFIFO, ( void* )UART0_RxBuff, sizeof( UART0_RxBuff ) );
+    // FIFO_S_Flush( &gUart0Handle.rxFIFO );
 }
 
 #endif
@@ -100,17 +100,18 @@ void UART3_Init( uint32_t rate )
 
     HT_UART_Init( HT_UART3, &UART_InitStructure );
 
-    HT_UART_ITConfig( HT_UART3, UART_UARTCON_TXIE, ENABLE );
-    // HT_UART_ITConfig(HT_UART3,UART_UARTCON_TXIE|UART_UARTCON_RXIE,ENABLE);
+    HT_UART_ITConfig( HT_UART3, UART_UARTCON_TXIE | UART_UARTCON_RXIE, ENABLE );
 
     NVIC_ClearPendingIRQ( UART3_IRQn );
-    NVIC_SetPriority( UART3_IRQn, 3 );
+    NVIC_SetPriority( UART3_IRQn, 0 );
     NVIC_EnableIRQ( UART3_IRQn );
 
     //接收缓存区初始化
     gUart3Handle.sysAddr   = HT_UART3;
     gUart3Handle.SendState = 0;
-    // FIFO_S_Init(&gUart3Handle.rxFIFO, (void*)UART3_RxBuff, sizeof(UART3_RxBuff));
+    static __IO uint8_t UART3_RxBuff[UART3_BUF_SIZE] = {0};
+    FIFO_S_Init(&gUart3Handle.rxFIFO, (void*)UART3_RxBuff, sizeof(UART3_RxBuff));
+    FIFO_S_Flush( &gUart3Handle.rxFIFO );
 }
 
 #endif
@@ -194,12 +195,12 @@ void UART_init( void )
 
 void IRQHandler( UART_INFO_STR* USARTx )
 {
-    if ( SET == HT_UART_ITFlagStatusGet( HT_UART0, UART_UARTSTA_TXIF ) ) /*!< UART发送中断         */
+    if ( SET == HT_UART_ITFlagStatusGet( USARTx->sysAddr, UART_UARTSTA_TXIF ) ) /*!< UART发送中断         */
     {
         HT_UART_ClearITPendingBit( USARTx->sysAddr, UART_UARTSTA_TXIF );
         USARTx->SendState = 0;
     }
-    if ( SET == HT_UART_ITFlagStatusGet( HT_UART0, UART_UARTSTA_RXIF ) ) /*!< UART接收中断         */
+    if ( SET == HT_UART_ITFlagStatusGet( USARTx->sysAddr, UART_UARTSTA_RXIF ) ) /*!< UART接收中断         */
     {
         uint8_t RxData = HT_UART_ReceiveData( USARTx->sysAddr );
         HT_UART_ClearITPendingBit( USARTx->sysAddr, UART_UARTSTA_RXIF );

@@ -19,13 +19,16 @@ static void Init_TaskSystem( void )
     SystemClock_Config();  // ±÷”≥ı ºªØ
 }
 
+extern void ui_init_duanma(void);
+
 static void BSP_Init()
 {
     //	RTC_Init();
+    OSTimer_Init();
     UART_init();
     EMU_Init();
+    ui_init_duanma();
     SimPwm_Init();
-    OSTimer_Init();
 }
 
 static void Usr_Init()

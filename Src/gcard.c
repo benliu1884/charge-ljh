@@ -10,17 +10,17 @@
  */
 #include "gcard.h"
 #include "tiny_aes.h"
+#include "uart.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 // M1卡操作接口
 #define M1_SERIALID_SIZE 4
 #define M1_BLOCK_SIZE 16
 #define M1_KEY_SIZE 6
 
-int m1_find_card(void);
+int m1_find_card( void );
 int m1_read_serial_id( char* data );
 int m1_auth_keya( int section, const char* pwd );
 int m1_auth_keyb( int section, const char* pwd );
@@ -88,9 +88,9 @@ static unsigned char io_buffer[ MT_BUFFER_SIZE ];  //发送和接收缓冲区
 //     printf("\r\n");                                 \
 // }
 
-static int io_write( unsigned char* data, int size );
-static int io_read( unsigned char* data, int size );
-static void io_delay(int ms);
+static int  io_write( unsigned char* data, int size );
+static int  io_read( unsigned char* data, int size );
+static void io_delay( int ms );
 
 static int check_res( unsigned char cmd, const unsigned char* data, int size )
 {
@@ -350,8 +350,8 @@ static void bcdstrformat( char* str, int len )
 static void str2bcd( char* bcd, const char* str, int len )
 {
     char chh, chl;
-	// char temp;
-    int  i;
+    // char temp;
+    int i;
     // int f0=0;
 
     //判断str长度是否合法
@@ -383,10 +383,10 @@ static void block_checksum( char* data )
 
 int card_lock( const char* stationsn )
 {
-    //tiny_aes_context ctx;
-    int              ret;
-    char             data[ M1_BLOCK_SIZE ];
-    char             sn[ 13 ];
+    // tiny_aes_context ctx;
+    int  ret;
+    char data[ M1_BLOCK_SIZE ];
+    char sn[ 13 ];
     // unsigned char in_temp[16];
     // unsigned char keya_temp[16];
     // memset(in_temp, 0, 16);
@@ -399,7 +399,7 @@ int card_lock( const char* stationsn )
     // tiny_aes_crypt_ecb(&ctx, AES_ENCRYPT, in_temp, keya_temp);
 
     // ret = m1_auth_keya(2, keya_temp); //扇区2
-    ret = m1_auth_keya( base_sector + 2, (const char *)current_keya );
+    ret = m1_auth_keya( base_sector + 2, ( const char* )current_keya );
     if ( ret == CR_SUCESS ) {
         ret = m1_read_block( base_sector + 2, 0, data );
         if ( ret == CR_SUCESS ) {
@@ -407,7 +407,7 @@ int card_lock( const char* stationsn )
             p->status        = 1;
             strncpy( sn, stationsn, 13 );
             bcdstrformat( sn, 6 );
-            str2bcd( (char *)p->chargersn, (const char *)sn, 6 );
+            str2bcd( ( char* )p->chargersn, ( const char* )sn, 6 );
             block_checksum( data );
             ret = m1_write_block( base_sector + 2, 0, data );
         }
@@ -417,9 +417,9 @@ int card_lock( const char* stationsn )
 
 int card_unlock()
 {
-    //tiny_aes_context ctx;
-    int              ret;
-    char             data[ M1_BLOCK_SIZE ];
+    // tiny_aes_context ctx;
+    int  ret;
+    char data[ M1_BLOCK_SIZE ];
     // unsigned char in_temp[16];
     // unsigned char keya_temp[16];
     // memset(in_temp, 0, 16);
@@ -432,7 +432,7 @@ int card_unlock()
     // tiny_aes_crypt_ecb(&ctx, AES_ENCRYPT, in_temp, keya_temp);
 
     // ret = m1_auth_keya(2, keya_temp); //扇区2
-    ret = m1_auth_keya( base_sector + 2, (const char *)current_keya );
+    ret = m1_auth_keya( base_sector + 2, ( const char* )current_keya );
     if ( ret == CR_SUCESS ) {
         ret = m1_read_block( base_sector + 2, 0, data );
         if ( ret == CR_SUCESS ) {
@@ -447,9 +447,9 @@ int card_unlock()
 
 int card_deduct( int payment )
 {
-    //tiny_aes_context ctx;
-    int              ret;
-    char             data[ M1_BLOCK_SIZE ];
+    // tiny_aes_context ctx;
+    int  ret;
+    char data[ M1_BLOCK_SIZE ];
     // unsigned char in_temp[16];
     // unsigned char keya_temp[16];
     // memset(in_temp, 0, 16);
@@ -462,7 +462,7 @@ int card_deduct( int payment )
     // tiny_aes_crypt_ecb(&ctx, AES_ENCRYPT, in_temp, keya_temp);
 
     // ret = m1_auth_keya(2, keya_temp); //扇区2
-    ret = m1_auth_keya( base_sector + 2, (const char *)current_keya );
+    ret = m1_auth_keya( base_sector + 2, ( const char* )current_keya );
     if ( ret == CR_SUCESS ) {
         ret = m1_read_block( base_sector + 2, 0, data );
         if ( ret == CR_SUCESS ) {
@@ -480,9 +480,9 @@ int card_deduct( int payment )
 
 int card_recharge( int payment )
 {
-    //tiny_aes_context ctx;
-    int              ret;
-    char             data[ M1_BLOCK_SIZE ];
+    // tiny_aes_context ctx;
+    int  ret;
+    char data[ M1_BLOCK_SIZE ];
     // unsigned char in_temp[16];
     // unsigned char keya_temp[16];
     // memset(in_temp, 0, 16);
@@ -495,7 +495,7 @@ int card_recharge( int payment )
     // tiny_aes_crypt_ecb(&ctx, AES_ENCRYPT, in_temp, keya_temp);
 
     // ret = m1_auth_keya(2, keya_temp); //扇区2
-    ret = m1_auth_keya( base_sector + 2, (const char *)current_keya );
+    ret = m1_auth_keya( base_sector + 2, ( const char* )current_keya );
     if ( ret == CR_SUCESS ) {
         ret = m1_read_block( base_sector + 2, 0, data );
         if ( ret == CR_SUCESS ) {
@@ -517,7 +517,7 @@ int card_clear()
     unsigned char    keya_temp[ 16 ];
     memset( in_temp, 0, 16 );
 
-    ret = m1_read_serial_id( (char *)in_temp );
+    ret = m1_read_serial_id( ( char* )in_temp );
     if ( ret != CR_SUCESS )
         return ret;
 
@@ -525,7 +525,7 @@ int card_clear()
     tiny_aes_crypt_ecb( &ctx, AES_ENCRYPT, in_temp, keya_temp );
 
     //扇区0
-    ret = m1_auth_keya( base_sector + 0, (const char *)keya_temp );
+    ret = m1_auth_keya( base_sector + 0, ( const char* )keya_temp );
     if ( ret != CR_SUCESS )
         return ret;
     // block 3
@@ -537,7 +537,7 @@ int card_clear()
         return ret;
 
     //扇区1
-    ret = m1_auth_keya( base_sector + 1, (const char *)keya_temp );
+    ret = m1_auth_keya( base_sector + 1, ( const char* )keya_temp );
     if ( ret != CR_SUCESS )
         return ret;
     // block 3, keya,keyb
@@ -564,7 +564,7 @@ int card_clear()
         return ret;
 
     //扇区2
-    ret = m1_auth_keya( base_sector + 2, (const char *)keya_temp );
+    ret = m1_auth_keya( base_sector + 2, ( const char* )keya_temp );
     if ( ret != CR_SUCESS )
         return ret;
     // block 3, keya,keyb
@@ -594,7 +594,7 @@ int card_create( CardInitialisation* card )
     unsigned char    keya_temp[ 16 ];
     memset( in_temp, 0, 16 );
 
-    ret = m1_read_serial_id( (char *)in_temp );
+    ret = m1_read_serial_id( ( char* )in_temp );
     if ( ret != CR_SUCESS )
         return ret;
 
@@ -602,7 +602,7 @@ int card_create( CardInitialisation* card )
     tiny_aes_crypt_ecb( &ctx, AES_ENCRYPT, in_temp, keya_temp );
 
     //扇区0
-    ret = m1_auth_keya( base_sector + 0, (const char *)keya_default );
+    ret = m1_auth_keya( base_sector + 0, ( const char* )keya_default );
     if ( ret != CR_SUCESS )
         return ret;
     // block 3
@@ -622,7 +622,7 @@ int card_create( CardInitialisation* card )
     }
 
     //扇区1
-    ret = m1_auth_keya( base_sector + 1, (const char *)keya_default );
+    ret = m1_auth_keya( base_sector + 1, ( const char* )keya_default );
     if ( ret != CR_SUCESS )
         return ret;
     // block 3, keya,keyb
@@ -641,7 +641,7 @@ int card_create( CardInitialisation* card )
     // block 1
     memset( data, 0, M1_BLOCK_SIZE );
     bcdstrformat( card->telphone, 6 );
-    str2bcd( (char *)(( USERBLOCK_1_1* )data)->tel, card->telphone, 6 );
+    str2bcd( ( char* )( ( USERBLOCK_1_1* )data )->tel, card->telphone, 6 );
     ret = m1_write_block( base_sector + 1, 1, data );
     if ( ret != CR_SUCESS )
         return ret;
@@ -649,13 +649,13 @@ int card_create( CardInitialisation* card )
     memset( data, 0, M1_BLOCK_SIZE );
     ( ( USERBLOCK_1_2* )data )->idtype = 1;
     bcdstrformat( card->idcard, 15 );
-    str2bcd( (char *)(( USERBLOCK_1_2* )data)->idnum, card->idcard, 15 );
+    str2bcd( ( char* )( ( USERBLOCK_1_2* )data )->idnum, card->idcard, 15 );
     ret = m1_write_block( base_sector + 1, 2, data );
     if ( ret != CR_SUCESS )
         return ret;
 
     //扇区2
-    ret = m1_auth_keya( base_sector + 2, (const char *)keya_default );
+    ret = m1_auth_keya( base_sector + 2, ( const char* )keya_default );
     if ( ret != CR_SUCESS )
         return ret;
     // block 3, keya,keyb
@@ -670,7 +670,7 @@ int card_create( CardInitialisation* card )
     ( ( USERBLOCK_2_1* )data )->haspassword = card->haspassword;
     ( ( USERBLOCK_2_1* )data )->type        = card->type;
     bcdstrformat( card->userid, 8 );
-    str2bcd( (char *)(( USERBLOCK_2_1* )data)->userid, card->userid, 8 );
+    str2bcd( ( char* )( ( USERBLOCK_2_1* )data )->userid, card->userid, 8 );
     block_checksum( data );
     ret = m1_write_block( base_sector + 2, 1, data );
 
@@ -699,26 +699,28 @@ int card_read( CardInfo* card )
     // if(ret!=CR_SUCESS)
     //     return ret;
 
-    io_read( io_buffer, MT_BUFFER_SIZE );
+    // io_read( io_buffer, MT_BUFFER_SIZE );
+    FIFO_S_Flush( &gUart3Handle.rxFIFO );
 
-    ret = m1_read_serial_id( (char *)in_temp );
+    ret = m1_read_serial_id( ( char* )in_temp );
     if ( ret != CR_SUCESS )
         return ret;
+    printf("read card success..\r\n");
     memcpy( card->serialid, in_temp, 4 );
     tiny_aes_setkey_enc( &ctx, aes_seed_keya, 128 );
     tiny_aes_crypt_ecb( &ctx, AES_ENCRYPT, in_temp, out_temp );
     memcpy( current_keya, out_temp, 6 );
 
-    ret = m1_auth_keya( base_sector + 1, (const char *)current_keya );  //扇区1
+    ret = m1_auth_keya( base_sector + 1, ( const char* )current_keya );  //扇区1
     if ( ret != CR_SUCESS )
         return CR_INVALID;
     ret = m1_read_block( base_sector + 1, 1, data );
     if ( ret == CR_SUCESS ) {
         USERBLOCK_1_1* p = ( USERBLOCK_1_1* )data;
-        strncpy( card->customer, (char *)p->vendor, sizeof( p->vendor ) );
+        strncpy( card->customer, ( char* )p->vendor, sizeof( p->vendor ) );
     }
 
-    ret = m1_auth_keya( base_sector + 2, (const char *)current_keya );  //扇区2
+    ret = m1_auth_keya( base_sector + 2, ( const char* )current_keya );  //扇区2
     if ( ret != CR_SUCESS )
         return CR_INVALID;
 
@@ -727,23 +729,23 @@ int card_read( CardInfo* card )
         USERBLOCK_2_0* p = ( USERBLOCK_2_0* )data;
         card->status     = p->status;
         card->balance    = p->balance;
-        bcd2str( card->stationsn, (const char *)p->chargersn, 6 );
+        bcd2str( card->stationsn, ( const char* )p->chargersn, 6 );
         card->timestamp = p->lasttime;
     }
     ret = m1_read_block( base_sector + 2, 1, data );
     if ( ret == CR_SUCESS ) {
         USERBLOCK_2_1* p = ( USERBLOCK_2_1* )data;
         card->type       = p->type;
-        bcd2str( card->userid, (const char *)p->userid, 8 );
+        bcd2str( card->userid, ( const char* )p->userid, 8 );
         card->expireddate = p->expireddate;
         card->haspassword = p->haspassword;
     }
-    if ( card->haspassword ) {                                //如果卡设置了密码，读取卡密码
-        ret = m1_auth_keya( base_sector + 0, (const char *)current_keya );  //扇区0
+    if ( card->haspassword ) {                                               //如果卡设置了密码，读取卡密码
+        ret = m1_auth_keya( base_sector + 0, ( const char* )current_keya );  //扇区0
         if ( ret == CR_SUCESS ) {
             ret = m1_read_block( base_sector + 0, 1, data );
             if ( ret == CR_SUCESS ) {
-                //USERBLOCK_0_1* p = ( USERBLOCK_0_1* )data;
+                // USERBLOCK_0_1* p = ( USERBLOCK_0_1* )data;
                 memcpy( card->password, data, 6 );
             }
         }
@@ -753,23 +755,37 @@ int card_read( CardInfo* card )
 
 int io_write( unsigned char* data, int size )
 {
+    Uart_Send( &gUart3Handle, ( char* )data, size );
     return 0;
 }
 
 int io_read( unsigned char* data, int size )
 {
-    return 0;
+    uint8_t get;
+    int     read_index = 0;
+
+    while ( 1 ) {
+        if ( FIFO_S_Get( &gUart3Handle.rxFIFO, &get ) != CL_OK ) {
+            break;
+        }
+        if ( read_index >= size ) {
+            break;
+        }
+
+        data[ read_index++ ] = get;
+    }
+
+    return read_index;
 }
 
-void io_delay(int ms)
+void io_delay( int ms )
 {
-	extern void Delay_mSec(int mSec);
-	Delay_mSec(ms);
+    extern void Delay_mSec( int mSec );
+    Delay_mSec( ms );
     // usleep(ms*1000);
 }
 
-
-int init_gcard_device(int device, int baudrate)
+int init_gcard_device( int device, int baudrate )
 {
     return 0;
 }

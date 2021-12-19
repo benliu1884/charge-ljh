@@ -103,6 +103,7 @@ static void ChargerStartOK( gun_info_t* gun, CHARGER_RESULT result )
 {
     LOG( "chargerStartOK,result=%d\r\n", ( int )result );
     if ( result == CHARGER_RESULT_OK ) {
+        charger.gun[0].startTime = OSTimeGet();
         gun->gunState = SysState_WORKING;
     } else {
         gun->gunState = SysState_NONE;
@@ -214,7 +215,7 @@ void StartCharger( int gun_id )
     if ( gun_id > GUN_CNT ) {
         return;
     }
-
+    LOG("start charger..\r\n");
     gun_info_t* gun = &charger.gun[ gun_id - 1 ];
     if ( gun->faultState.fault != 0 )  //¹ÊÕÏ
     {
@@ -236,6 +237,7 @@ void StopCharger( int gun_id, uint8_t stopReason )
     if ( gun_id > GUN_CNT ) {
         return;
     }
+    LOG("stop charger..\r\n");
     gun_info_t* gun = NULL;
     if ( gun_id == 0 ) {
         for ( uint8_t i = 0; i < GUN_CNT; i++ ) {
