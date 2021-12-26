@@ -85,7 +85,7 @@ static void LcdTurnOnLed( void )
 /**
  * @brief 关闭背光
  */
-static void LcdTurnOffLed( void )
+void LcdTurnOffLed( void )
 {
     Ht1621_LightOff();
 }
@@ -620,7 +620,7 @@ void ui_display_loop( uint32_t tick )
 
 static void lcd_off_timeout( void* arg )
 {
-    LcdTurnOffLed();
+    // LcdTurnOffLed();
 }
 
 void lcd_poweron_light( int time )

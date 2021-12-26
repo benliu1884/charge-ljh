@@ -9,5 +9,9 @@ Flash的地址：0x1FFF0 ，最大16个字节
 453        {
 
 
-
-
+##读卡器
+默认的aed_seed是：hellowGoiot2018
+默认的M1起始删除扇区是：6
+需要和发卡器的配置一样，可以根据实际情况修改：在gcard.c文件中，261和262行
+261 static unsigned char       aes_seed_keya[ 16 ]     = "hellowGoiot2018";  // KEY_A seed key
+262 static unsigned char       base_sector             = 6;
