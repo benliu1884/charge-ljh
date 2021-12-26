@@ -128,9 +128,11 @@ void CheckCP( void )
         }
 
         // cp 12V->9V/6V  ²åÇ¹¿ªÊ¼³äµç
-        // if(charger.gun[0].CP_STAT == CP_12V && (curState == CP_9V || curState == CP_6V))
-        if ( curState == CP_9V || curState == CP_6V ) {
-            // StartCharger( 1 );
+        // if ( curState == CP_9V || curState == CP_6V ) {
+        //     StartCharger( 1 , NULL);
+        // }
+        if (curState != CP_6V && curState != CP_9V) {
+            charger.gun[0].startFlag = 0;
         }
 
         charger.gun[ 0 ].CP_STAT = curState;
@@ -151,12 +153,15 @@ void ReadMeter( void )
         charger.gun[ 0 ].meter.voltage_an = ReadRMSU();
         charger.gun[ 0 ].meter.power      = ReadPower( 1 );
         charger.gun[ 0 ].meter.current_an = ReadRMSI( 1 );
+        charger.gun[ 0 ].meter.electricity = ReadEnergy();
         charger.gun[ 0 ].meter.updateTime = OSTimeGet();
 
         // TODO zhoumin - ²âÊÔ
+        #if 1
         charger.gun[ 0 ].meter.voltage_an = 2192;
         charger.gun[ 0 ].meter.current_an = 12860;
-        charger.gun[ 0 ].meter.electricity = 0;
+        charger.gun[ 0 ].meter.electricity = ReadEnergy();
+        #endif
     }
 }
 
@@ -215,9 +220,8 @@ void FaultHandle( uint32_t currTime )
         if ( charger.gun[ 0 ].meter.voltage_an > CRITIAL_LOW_VOL && charger.gun[ 0 ].meter.voltage_an < CRITIAL_OVER_VOL && currTime > charger.gun[ 0 ].volBackTime ) {
             charger.gun[ 0 ].faultState.BIT.fault_in_low_voltage  = 0;
             charger.gun[ 0 ].faultState.BIT.fault_in_over_voltage = 0;
-            if ( current_cp_state == CP_9V || current_cp_state == CP_6V ) {
-                // StartCharger( 1 , NULL);
-                //TODO
+            if ( (current_cp_state == CP_9V || current_cp_state == CP_6V) && charger.gun[0].startFlag) {
+                StartCharger( 1 , NULL);
             }
         }
     } else {

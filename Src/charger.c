@@ -187,11 +187,13 @@ void ChargerTask( void )
                 gun->ChargerState = ChargerState_CHARGEING;
             } else if ( gun->CP_STAT == CP_12V || gun->CP_STAT == CP_ERROR ) {
                 gun->ChargerState = ChargerState_STOPING;
+                gun->startFlag = 0;
             }
             break;
         case ChargerState_FULL:  //³äÂú
             if ( gun->CP_STAT == CP_12V || gun->CP_STAT == CP_ERROR ) {
                 gun->ChargerState = ChargerState_STOPING;
+                gun->startFlag = 0;
             } else if ( charger.gun[ 0 ].faultState.BIT.fault_in_low_voltage == 1 || charger.gun[ 0 ].faultState.BIT.fault_in_over_voltage == 1 ) {
                 ;
             } else if ( gun->CP_STAT == CP_6V ) {
@@ -218,7 +220,6 @@ void StartCharger( int gun_id, CardInfo* card)
     if ( gun_id > GUN_CNT ) {
         return;
     }
-    LOG("start charger..\r\n");
     gun_info_t* gun = &charger.gun[ gun_id - 1 ];
     if ( gun->faultState.fault != 0 )  //¹ÊÕÏ
     {
@@ -230,6 +231,7 @@ void StartCharger( int gun_id, CardInfo* card)
     if (card != NULL) {
         memcpy((void *)&gun->card, (void *)card, sizeof(CardInfo));
     }
+    gun->startFlag = 1;
     //¿ªÆô³äµç¶¨Ê±Æ÷
     //	if(gun->openTimer != -1)
     //	{
@@ -258,6 +260,9 @@ void StopCharger( int gun_id, uint8_t stopReason )
         if ( gun->gunState != SysState_NONE ) {
             gun->ChargerState = ChargerState_STOPING;
         }
+    }
+    if (CHARGER_RESULT_CARD == stopReason) {
+        gun->startFlag = 0;
     }
 }
 

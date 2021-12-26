@@ -213,7 +213,9 @@ typedef union
 }EMUC;
 
 
-void ProcessEnergy(void);
+#define EC_CONST	3200
+
+uint32_t ReadEnergy(void);
 void EMU_Init(void);
 void EMU_Proc(void);
 uint16_t ReadRMSU(void);

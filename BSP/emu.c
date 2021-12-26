@@ -8,6 +8,9 @@ EMUC emu_ecr_reg;
 //交表寄存器的校验和
 uint32_t emu_var_checksum;
 
+uint32_t ep_old;
+
+
 static uint32_t Read_EPADR( uint16_t address );
 static uint16_t Read_ECADR( uint16_t address );
 static void     Write_ECADR( uint16_t address, uint16_t data );
@@ -47,6 +50,8 @@ void EMU_Init( void )
         emu_var_cal();
 
         HT_EMUECA->EMUIF = 0x0000;
+
+        ep_old = HT_EMUEPA->ENERGYP;
 
         NVIC_ClearPendingIRQ( EMU_IRQn );
         NVIC_SetPriority( EMU_IRQn, 3 );
@@ -323,6 +328,25 @@ uint32_t ReadPower( uint8_t channl )
     }
 
     return temp_powerp * ( emu_ecr_reg.ECR.Emu_Kp );
+}
+
+uint32_t energy_all = 0;
+//读取电量：分辨率0.01kwh
+uint32_t ReadEnergy(void)
+{
+    uint32_t cur_ep = 0, ep_delta;
+
+    cur_ep = HT_EMUEPA->ENERGYP;
+    if (cur_ep < ep_old) {
+        ep_delta = cur_ep + (0x00FFFFFF - ep_old);
+    } else {
+        ep_delta = cur_ep - ep_old;
+    }
+
+    energy_all += ep_delta;
+    ep_old = cur_ep;
+
+    return (energy_all*100/EC_CONST);
 }
 
 /***********************************************************************************************

@@ -188,6 +188,8 @@ typedef struct
     //结束电量
     uint32_t stopElec;
 
+    uint8_t startFlag;
+
     //刷卡信息
     CardInfo card;
 } gun_info_t;
