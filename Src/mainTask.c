@@ -17,7 +17,6 @@
 #include "sim_pwm.h"
 #include "uart.h"
 
-
 static CP_TypeDef GetCPState( void );
 static void       CheckCP( void );
 static void       FaultHandle( uint32_t currTime );
@@ -126,20 +125,18 @@ void CheckCP( void )
             //				charger.gun[0].faultState.BIT.fault_leakage = 0;
             //			}
         }
-
-        // cp 12V->9V/6V
-        if ( curState == CP_9V || curState == CP_6V ) {
-            // StartCharger( 1 , NULL); // 插枪开始充电
-            if (charger.gun[ 0 ].gunState != SysState_Finish) {
-                charger.gun[ 0 ].gunState = SysState_Ready;
-            }
-        }
+        // cp 12V->9V/6V 插枪开始充电
+        // if ( curState == CP_9V || curState == CP_6V ) {
+            // StartCharger( 1 , NULL);
+        // }
         charger.gun[ 0 ].CP_STAT = curState;
     }
     if (curState != CP_6V || curState != CP_9V) {
         charger.gun[0].startFlag = 0;
     }
 }
+
+
 
 //读取电表数据
 void ReadMeter( void )
@@ -229,7 +226,6 @@ void FaultHandle( uint32_t currTime )
     } else {
         charger.gun[ 0 ].faultState.BIT.fault_meter = 1;
     }
-
     //	//接地 去掉接地检测
     //	if(READ_EARTH() == 0)
     //	{
@@ -239,7 +235,6 @@ void FaultHandle( uint32_t currTime )
     //	{
     //		charger.gun[0].faultState.BIT.fault_pe_break = 1;
     //	}
-
     //有故障
     if ( charger.gun[ 0 ].faultState.fault != 0 ) {
         //		if(charger.gun[0].gunState != SysState_NONE)
@@ -371,22 +366,21 @@ void FaultHandle( uint32_t currTime )
         {
             // printf( "SysState_NONE,LED_OFF(LED3|LED4)...\r\n" );
             LED_OFF( LED3 | LED4 );
+            if (charger.gun[ 0 ].CP_STAT == CP_9V || charger.gun[ 0 ].CP_STAT == CP_6V) {
+                charger.gun[ 0 ].gunState = SysState_Ready;
+            }
         } else if ( charger.gun[ 0 ].gunState == SysState_WORKING )  //充电
         {
             // printf( "SysState_WORKING.\r\n" );
             if ( charger.gun[ 0 ].meter.current_an < 200 ) {
-                // printf( "charger.gun[0].meter.current_an < 200,LED_ON(LED3)...\r\n" );
                 LED_ON( LED3 );
             } else if ( currTime - tick_charge >= 1000 ) {
                 tick_charge = currTime;
-                // printf( "currTime - tick_charge >= 1000,LED_Toggle(LED3)...\r\n" );
                 LED_Toggle( LED3 );
             }
             if ( charger.gun[ 0 ].faultState.fault != 0 ) {
-                // printf( "charger.gun[0].faultState.fault != 0,LED_OFF(LED3|LED4)...\r\n" );
                 LED_OFF( LED3 | LED4 );
             } else {
-                // printf( "LED_OFF(LED2|LED3)...\r\n" );
                 LED_OFF( LED2 | LED3 );
                 Delay_mSec( 1200 );
                 // printf( "LED_ON(LED1|LED3|LED4)...\r\n" );
@@ -407,6 +401,11 @@ void FaultHandle( uint32_t currTime )
         } else if ( charger.gun[ 0 ].gunState == SysState_Ready )  //插枪
         {
             // printf( "charger.gun[0].gunState == SysState_Ready.\r\n" );
+            if ( charger.gun[ 0 ].CP_STAT == CP_12V )  //已经拔枪
+            {
+                LED_OFF( LED2 );
+                charger.gun[ 0 ].gunState = SysState_NONE;
+            }
             if ( charger.gun[ 0 ].faultState.fault != 0 ) {
                 // printf( "LED_OFF(LED3|LED4)...\r\n" );
                 LED_OFF( LED3 | LED4 );
@@ -421,7 +420,6 @@ void FaultHandle( uint32_t currTime )
 
 #define DEVICE_SN_ADDR  0x1FFF0
 uint8_t dev_sn[17] = {0};
-
 extern void set_read_card_flag(int result);
 void read_card(uint32_t tick)
 {
