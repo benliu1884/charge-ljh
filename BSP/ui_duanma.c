@@ -31,6 +31,8 @@ typedef struct
     uint8_t        state;       //界面状态
     uint8_t        last_state;  //上一个界面状态
     timer_handle_t offtimer;    //关闭lcd定时器
+    uint8_t card_result;        //0-无 1-成功 2-失败 3-无效
+    uint32_t show_card_tick;    //读卡时间戳
 } gui_t;
 
 static gui_t _gui;
@@ -117,17 +119,22 @@ static void LcdDisplay( uint8_t seg, uint8_t segVal, LCD_Display_TypeDef flag )
 {
     uint8_t lcdBuf = 0;
     lcdBuf         = Ht1621ReadSegVal( seg );
-    if ( LCD_DISPLAY == flag )
+    if ( LCD_DISPLAY == flag ) {
+        if (lcdBuf == segVal) {
+            return ;
+        }
         lcdBuf |= segVal;
-    else
+    }
+    else {
         lcdBuf &= ~segVal;
+    }
     Ht1621WriteSegVal( seg, lcdBuf );
 }
 
 /**
  * @brief 显示后台连接图标，网络信号图标，蓝牙连接图标
  */
-static void GuiDisplay_Header()
+void GuiDisplay_Header()
 {
     LcdDisplay( 0, 0x02 | 0x04, LCD_DISPLAY );
 }
@@ -141,7 +148,7 @@ static void GuiClear_All()
         return;
     }
     LcdAllOff();
-    GuiDisplay_Header();
+    // GuiDisplay_Header();
 }
 
 const uint8_t reg_time_value[ 10 ] = {
@@ -239,15 +246,27 @@ static int get_high_number(int num)
 }
 
 /**
- * @brief 显示数据 215.60
+ * @brief 显示数据
  *
  * @param num
  */
 static void LcdDisplay_ChargeNumber( uint32_t num , int precision)
 {
-    int interger = num / precision;
-    int decimals = num % precision;
+    int interger = 0;
+    int decimals = 0;
     int temp = 0;
+
+    if (precision != 0) {
+        interger = num / precision;
+        decimals = num % precision;
+    } else {
+        interger = num;
+    }
+
+    if (interger > 9999) {
+        printf("num:%d is out if range \n", num);
+        return ;
+    }
 
     LcdDisplay(21, 0x08, LCD_CLEAR);
     LcdDisplay(23, 0x08, LCD_CLEAR);
@@ -262,17 +281,70 @@ static void LcdDisplay_ChargeNumber( uint32_t num , int precision)
         temp = temp%10;
         LcdDisplay_Number(3, temp);
     } else if(interger/100) {
-        LcdDisplay_Number(0, interger/100);
-        temp = interger%100;
-        LcdDisplay_Number(1, temp/10);
-        temp = temp%10;
-        LcdDisplay_Number(2, temp);
-        LcdDisplay(21, 0x08, LCD_DISPLAY); //小数点
-        LcdDisplay_Number(3, get_high_number(decimals));
+        if (decimals == 0) {
+            LcdDisplay_Number(0, 0);
+            LcdDisplay_Number(1, interger/100);
+            temp = interger%100;
+            LcdDisplay_Number(2, temp/10);
+            temp = temp%10;
+            LcdDisplay_Number(3, temp);
+        } else {
+            LcdDisplay_Number(0, interger/100);
+            temp = interger%100;
+            LcdDisplay_Number(1, temp/10);
+            temp = temp%10;
+            LcdDisplay_Number(2, temp);
+            //小数
+            LcdDisplay(21, 0x08, LCD_DISPLAY);
+            LcdDisplay_Number(3, get_high_number(decimals));
+        }
     } else if(interger/10) {//25
-
+        if (decimals == 0) {
+            LcdDisplay_Number(0, 0);
+            LcdDisplay_Number(1, 0);
+            LcdDisplay_Number(2, interger/10);
+            temp = interger%10;
+            LcdDisplay_Number(3, temp);
+        } else {
+            LcdDisplay_Number(0, interger/10);
+            temp = interger%10;
+            LcdDisplay_Number(1, temp);
+            //小数
+            LcdDisplay(23, 0x08, LCD_DISPLAY);
+            if (decimals/10) {
+                LcdDisplay_Number(2, decimals/10);
+                temp = decimals%10;
+                LcdDisplay_Number(3, temp);
+            } else {
+                LcdDisplay_Number(2, decimals);
+                LcdDisplay_Number(3, 0);
+            }
+        }
     } else {
-
+        if (decimals == 0) {
+            LcdDisplay_Number(0, 0);
+            LcdDisplay_Number(1, 0);
+            LcdDisplay_Number(2, 0);
+            LcdDisplay_Number(3, interger);
+        } else {
+            LcdDisplay_Number(0, interger);
+            //小数
+            LcdDisplay(25, 0x08, LCD_DISPLAY);
+            if (decimals/100) {
+                LcdDisplay_Number(1, decimals/100);
+                temp = decimals%100;
+                LcdDisplay_Number(2, temp/10);
+                LcdDisplay_Number(3, temp%10);
+            } else if (decimals/10) {
+                LcdDisplay_Number(1, 0);
+                LcdDisplay_Number(2, decimals/10);
+                LcdDisplay_Number(3, decimals%10);
+            } else {
+                LcdDisplay_Number(1, 0);
+                LcdDisplay_Number(2, 0);
+                LcdDisplay_Number(3, decimals);
+            }
+        }
     }
 }
 
@@ -353,28 +425,43 @@ void LcdDisplay_ChargeInfo(void)
     {
     case 0: //电压
         LcdDisplay( 16, 0x08, LCD_DISPLAY );
-        LcdDisplay_ChargeNumber(2156,10);
+        LcdDisplay_ChargeNumber(charger.gun[ 0 ].meter.voltage_an,10);
         show_type = 1;
         break;
     case 1: //电流
         LcdDisplay( 17, 0x08, LCD_DISPLAY );
-        //TODO
-        LcdDisplay_ChargeNumber(102,1);
+        LcdDisplay_ChargeNumber(charger.gun[ 0 ].meter.current_an,1000);
         show_type = 2;
         break;
     case 2://电量
         LcdDisplay( 16, 0x04, LCD_DISPLAY );
         LcdDisplay( 17, 0x04, LCD_DISPLAY );
         LcdDisplay( 18, 0x04, LCD_DISPLAY );
-        //TODO
-        LcdDisplay_ChargeNumber(1002,1);
+        LcdDisplay_ChargeNumber(charger.gun[ 0 ].meter.electricity - charger.gun[ 0 ].startElec,1000);
         show_type = 0;
         break;
     default:
         show_type = 0;
         break;
     }
-    
+}
+
+
+static void GuiDisplay_Result(uint8_t result, LCD_Display_TypeDef display)
+{
+    switch (result)
+    {
+    case 1: //成功
+        break;
+    case 2: //失败
+        LcdDisplay( 29, 0x08, display );    // S26
+        break;
+    case 3: // 无效
+        LcdDisplay( 28, 0x04, display );    // S24
+        break;
+    default:
+        break;
+    }
 }
 
 /**
@@ -383,16 +470,28 @@ void LcdDisplay_ChargeInfo(void)
 static void GuiDisplay_Work( uint32_t tick )
 {
     int ct = 0;
+    static uint32_t tick_1s = 0;
+    static uint32_t tick_2s = 0;
+
+    if (_gui.card_result != 0) {
+        if (tick >= _gui.show_card_tick + 3000) {
+            GuiDisplay_Result(_gui.card_result, LCD_CLEAR);
+            _gui.card_result = 0;
+        }
+        GuiDisplay_Result(_gui.card_result, LCD_DISPLAY);
+    }
+
     if ( _gui.last_state != _gui.state ) {
         LcdDisplay( 0, 0x01, LCD_CLEAR );            //
-        LcdDisplay( 27, 0x08, LCD_DISPLAY );         //已充
+        // LcdDisplay( 27, 0x08, LCD_DISPLAY );         //已充
         LcdDisplay( 15, 0x04, LCD_DISPLAY );         //实时信息
         LcdDisplay( 14, 0x01 | 0x04, LCD_DISPLAY );  // T5
         LcdDisplay( 1, 0x04 | 0x2, LCD_DISPLAY );    // S5/S7
+        tick_2s = 0;
+        tick_1s = 0;
     }
 
-    static uint32_t tick_1s = 0;
-    static uint32_t tick_2s = 0;
+
     /* 充电实时信息 */
     if ( tick >= tick_1s + 500 ) {
         tick_1s = tick;
@@ -402,24 +501,43 @@ static void GuiDisplay_Work( uint32_t tick )
         ct = ( tick - charger.gun[ 0 ].startTime ) / 1000;
         LcdDisplay_ChargeTime( ct );
     }
-    if ( tick >= tick_2s + 2000 ) {
+    if ( tick >= tick_2s + 5000 ) {
         tick_2s = tick;
         //更新充电实时数据
         LcdDisplay_ChargeInfo();
     }
-
 }
+
 
 /**
  * @brief 刷卡界面显示
  */
-static void GuiDisplay_Card() {}
+static void GuiDisplay_Card(uint32_t tick)
+{
+    if (_gui.card_result != 0) {
+        if (tick >= _gui.show_card_tick + 3000) {
+            GuiDisplay_Result(_gui.card_result, LCD_DISPLAY);
+            _gui.card_result = 0;
+        }
+        GuiDisplay_Result(_gui.card_result, LCD_CLEAR);
+    }
+    if ( _gui.last_state == _gui.state ) {
+        return;
+    }
+}
 
 /**
  * @brief 待机界面
  */
-static void GuiDisplay_Idle()
+static void GuiDisplay_Idle(uint32_t tick)
 {
+    if (_gui.card_result != 0) {
+        if (tick >= _gui.show_card_tick + 3000) {
+            GuiDisplay_Result(_gui.card_result, LCD_CLEAR);
+            _gui.card_result = 0;
+        }
+        GuiDisplay_Result(_gui.card_result, LCD_DISPLAY);
+    }
     if ( _gui.last_state == _gui.state ) {
         return;
     }
@@ -429,12 +547,41 @@ static void GuiDisplay_Idle()
 /**
  * @brief 充电完成界面显示
  */
-static void GuiDisplay_Finsh() {}
+static void GuiDisplay_Finsh(uint32_t tick)
+{
+    if (_gui.card_result != 0) {
+        if (tick >= _gui.show_card_tick + 3000) {
+            GuiDisplay_Result(_gui.card_result, LCD_CLEAR);
+            _gui.card_result = 0;
+        }
+        GuiDisplay_Result(_gui.card_result, LCD_DISPLAY);
+    }
+
+    if ( _gui.last_state == _gui.state ) {
+        return;
+    }
+    LcdDisplay( 14, 0x01, LCD_DISPLAY );  // T5
+    LcdDisplay( 27, 0x08, LCD_DISPLAY );  //已充
+    LcdDisplay( 1, 0x04 | 0x2, LCD_DISPLAY );    // S5/S7
+    LcdDisplay_ChargeTime((charger.gun[ 0 ].stopTime - charger.gun[ 0 ].startTime)/1000);
+    LcdDisplay( 16, 0x04, LCD_DISPLAY );
+    LcdDisplay( 17, 0x04, LCD_DISPLAY );
+    LcdDisplay( 18, 0x04, LCD_DISPLAY );
+    LcdDisplay_ChargeNumber(charger.gun[ 0 ].stopElec - charger.gun[ 0 ].startElec,1000);
+}
 
 /**
  * @brief 故障界面显示
  */
-static void GuiDisplay_Fault() {}
+static void GuiDisplay_Fault()
+{
+    if ( _gui.last_state == _gui.state ) {
+        return;
+    }
+    LcdDisplay( 29, 0x04, LCD_DISPLAY );
+
+    LcdDisplay_ChargeNumber(charger.gun[ 0 ].faultState.fault, 0);
+}
 
 #include "charger.h"
 void ui_display_loop( uint32_t tick )
@@ -452,16 +599,16 @@ void ui_display_loop( uint32_t tick )
     GuiClear_All();
     switch ( _gui.state ) {
     case SYS_IDLE:
-        GuiDisplay_Idle();
+        GuiDisplay_Idle(tick);
         break;
     case SYS_CARD:
-        GuiDisplay_Card();
+        GuiDisplay_Card(tick);
         break;
     case SYS_WORK:
-        GuiDisplay_Work( tick );
+        GuiDisplay_Work( OSTimeGet() );
         break;
     case SYS_FINSH:
-        GuiDisplay_Finsh();
+        GuiDisplay_Finsh(tick);
         break;
     case SYS_FAULT:
         GuiDisplay_Fault();
@@ -483,6 +630,17 @@ void lcd_poweron_light( int time )
     }
     LcdTurnOnLed();
     _gui.offtimer = Set_Timer( time, lcd_off_timeout, NULL );
+}
+
+/**
+ * 
+ * @param result  0-成功 1-失败 2-无效
+ */
+void set_read_card_flag(int result)
+{
+    printf("set_read_card_flag...");
+    _gui.card_result = result;
+    _gui.show_card_tick = OSTimeGet();
 }
 
 void ui_init_duanma( void )

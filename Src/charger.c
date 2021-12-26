@@ -104,6 +104,7 @@ static void ChargerStartOK( gun_info_t* gun, CHARGER_RESULT result )
     LOG( "chargerStartOK,result=%d\r\n", ( int )result );
     if ( result == CHARGER_RESULT_OK ) {
         charger.gun[0].startTime = OSTimeGet();
+        charger.gun[0].startElec = charger.gun[0].meter.electricity;
         gun->gunState = SysState_WORKING;
     } else {
         gun->gunState = SysState_NONE;
@@ -124,7 +125,9 @@ static void ChargerStopOK( gun_info_t* gun )
     if ( charger.callback_complete ) {
         charger.callback_complete( gun );
     }
+    gun->stopTime = OSTimeGet();
     gun->lastChargerTime = OSTimeGet();
+    charger.gun[0].stopElec = charger.gun[0].meter.electricity;
     gun->gunState        = SysState_Finish;
 }
 
@@ -210,7 +213,7 @@ void ChargerTask( void )
     }
 }
 
-void StartCharger( int gun_id )
+void StartCharger( int gun_id, CardInfo* card)
 {
     if ( gun_id > GUN_CNT ) {
         return;
@@ -223,6 +226,10 @@ void StartCharger( int gun_id )
     }
     if ( gun->ChargerState == ChargerState_READY )
         gun->ChargerState = ChargerState_STARTING;
+    
+    if (card != NULL) {
+        memcpy((void *)&gun->card, (void *)card, sizeof(CardInfo));
+    }
     //开启充电定时器
     //	if(gun->openTimer != -1)
     //	{

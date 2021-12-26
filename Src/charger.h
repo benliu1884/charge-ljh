@@ -3,6 +3,7 @@
 
 #include "includes.h"
 #include "os_timer.h"
+#include "gcard.h"
 
 #define OPENCHARGER_TIME ( TIMER_DURATION_1s * 60 )  //开启充电时长  9V---6V
 
@@ -57,6 +58,7 @@ typedef enum
     CHARGER_RESULT_AC_OUT_CURR_OVER     = 0x11,  //交流输出电流过流故障
     CHARGER_RESULT_AC_OUT_SHORT         = 0x12,  //交流输出短路故障
     CHARGER_RESULT_OTHER_FAULT          = 0x13,  //充电桩其他故障
+    CHARGER_RESULT_CARD                 = 0x14,  //刷卡停止
 } CHARGER_RESULT;
 
 //枪头状态
@@ -92,7 +94,7 @@ typedef enum
 
 typedef union
 {
-    uint8_t fault;
+    uint16_t fault;
     struct
     {
         uint8_t fault_pile_over_temp : 1;
@@ -104,6 +106,8 @@ typedef union
         uint8_t fault_leakage : 1;
         uint8_t fault_meter : 1;
         uint8_t fault_out_abnormal_current : 1;
+
+        uint8_t fault_cardreader : 1;   //读卡器故障
     } BIT;
 } FaultState;
 
@@ -183,6 +187,9 @@ typedef struct
 
     //结束电量
     uint32_t stopElec;
+
+    //刷卡信息
+    CardInfo card;
 } gun_info_t;
 
 typedef struct
@@ -198,7 +205,7 @@ typedef struct
     void ( *callback_complete )( gun_info_t* );
 } charger_info_t;
 
-void StartCharger( int gun_id );
+void StartCharger( int gun_id, CardInfo* card);
 void StopCharger( int gun_id, uint8_t stopReason );
 void ChargerTask( void );
 void Charger_Init( void );

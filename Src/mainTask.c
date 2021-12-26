@@ -12,10 +12,11 @@
 #include "cmu.h"
 #include "delay.h"
 #include "emu.h"
+#include "gcard.h"
 #include "includes.h"
 #include "sim_pwm.h"
 #include "uart.h"
-#include "gcard.h"
+
 
 static CP_TypeDef GetCPState( void );
 static void       CheckCP( void );
@@ -129,7 +130,7 @@ void CheckCP( void )
         // cp 12V->9V/6V  插枪开始充电
         // if(charger.gun[0].CP_STAT == CP_12V && (curState == CP_9V || curState == CP_6V))
         if ( curState == CP_9V || curState == CP_6V ) {
-            StartCharger( 1 );
+            // StartCharger( 1 );
         }
 
         charger.gun[ 0 ].CP_STAT = curState;
@@ -151,6 +152,11 @@ void ReadMeter( void )
         charger.gun[ 0 ].meter.power      = ReadPower( 1 );
         charger.gun[ 0 ].meter.current_an = ReadRMSI( 1 );
         charger.gun[ 0 ].meter.updateTime = OSTimeGet();
+
+        // TODO zhoumin - 测试
+        charger.gun[ 0 ].meter.voltage_an = 2192;
+        charger.gun[ 0 ].meter.current_an = 12860;
+        charger.gun[ 0 ].meter.electricity = 0;
     }
 }
 
@@ -210,7 +216,8 @@ void FaultHandle( uint32_t currTime )
             charger.gun[ 0 ].faultState.BIT.fault_in_low_voltage  = 0;
             charger.gun[ 0 ].faultState.BIT.fault_in_over_voltage = 0;
             if ( current_cp_state == CP_9V || current_cp_state == CP_6V ) {
-                StartCharger( 1 );
+                // StartCharger( 1 , NULL);
+                //TODO
             }
         }
     } else {
@@ -227,8 +234,6 @@ void FaultHandle( uint32_t currTime )
     //		charger.gun[0].faultState.BIT.fault_pe_break = 1;
     //	}
 
-    //TOD zhoumin - 测试
-    charger.gun[ 0 ].faultState.fault = 0;
     //有故障
     if ( charger.gun[ 0 ].faultState.fault != 0 ) {
         //		if(charger.gun[0].gunState != SysState_NONE)
@@ -239,7 +244,7 @@ void FaultHandle( uint32_t currTime )
         /*******故障指示灯*******/
         //过热保护
         if ( charger.gun[ 0 ].faultState.BIT.fault_pile_over_temp == 1 ) {
-            printf( "over temp!LED_ON(LED4|LED3|LED2)...\r\n" );  // kong-debug-20210916
+            // printf( "over temp!LED_ON(LED4|LED3|LED2)...\r\n" );  // kong-debug-20210916
             LED_ON( LED4 | LED3 | LED2 );
             StopCharger( 1, charger.gun[ 0 ].faultState.fault );
         }
@@ -334,7 +339,7 @@ void FaultHandle( uint32_t currTime )
         {
             LED_ON( LED1 );
             LED_OFF( LED2 | LED3 | LED4 );
-            printf( "SysState_Finish: LED_OFF(LED2|LED3|LED4)...\r\n" );
+            // printf( "SysState_Finish: LED_OFF(LED2|LED3|LED4)...\r\n" );
             if ( charger.gun[ 0 ].CP_STAT == CP_12V )  //已经拔枪
             {
                 LED_OFF( LED2 );
@@ -397,14 +402,75 @@ void FaultHandle( uint32_t currTime )
         {
             // printf( "charger.gun[0].gunState == SysState_Ready.\r\n" );
             if ( charger.gun[ 0 ].faultState.fault != 0 ) {
-                printf( "LED_OFF(LED3|LED4)...\r\n" );
+                // printf( "LED_OFF(LED3|LED4)...\r\n" );
                 LED_OFF( LED3 | LED4 );
             } else {
                 LED_OFF( LED2 | LED4 );
-                printf( "LED_ON(LED1|LED3)...\r\n" );
+                // printf( "LED_ON(LED1|LED3)...\r\n" );
                 LED_ON( LED1 | LED3 );
             }
         }
+    }
+}
+
+#define DEVICE_SN_ADDR  0x1FFF0
+uint8_t dev_sn[17] = {0};
+
+extern void set_read_card_flag(int result);
+void read_card(uint32_t tick)
+{
+    CardInfo card;
+    static uint32_t last_tick = 0;
+    static uint32_t last_read_card = 0;
+    static uint8_t err_cnt = 0;
+    int ret ;
+
+    if (tick - last_tick < 700) {
+        return ;
+    }
+    if (tick - last_read_card < 3000) {
+        return;
+    }
+    last_tick = tick;
+
+    if (charger.gun[ 0 ].faultState.fault && charger.gun[ 0 ].faultState.BIT.fault_cardreader != 1) {
+        return ;
+    }
+    ret = card_read( &card );
+    if (ret == CR_TIMEOUT) {
+        if (err_cnt < 100)
+            err_cnt++;
+    } else {
+        err_cnt = 0;
+    }
+    if ( ret == CR_SUCESS ) {
+        // if (strcmp(dev_sn, card.userid) == 0)
+        if (1)
+        {
+            printf( "read card success..\r\n" );
+            last_read_card = tick;
+            if ( charger.gun[ 0 ].gunState == SysState_WORKING ) {
+                if (memcmp(card.serialid, charger.gun[ 0 ].card.serialid, 4) == 0) {
+                    StopCharger( 1, CHARGER_RESULT_CARD );
+                } else {
+                    set_read_card_flag(3);
+                }
+            } else if ( charger.gun[ 0 ].gunState == SysState_NONE ) {
+                StartCharger( 1, &card);
+            } else {
+                set_read_card_flag(3);
+            }
+        } else {
+            set_read_card_flag(3);
+        }
+    } else if (ret == CR_INVALID || ret == CR_FRAME_ERROR) {
+        set_read_card_flag(2);
+    }
+
+    if (err_cnt > 10) {
+        charger.gun[0].faultState.BIT.fault_cardreader = 1;
+    } else {
+        charger.gun[0].faultState.BIT.fault_cardreader = 0;
     }
 }
 
@@ -416,15 +482,18 @@ void vMainTask( void* argc )
 {
     uint32_t currTime = 0;
     uint32_t tick     = 0;
-    uint32_t tick_1s     = 0;
     charger_init      = 0;
-    CardInfo card;
-    //电源指示灯
+
     charger.gun[ 0 ].meter.isVaild = 1;
+    //电源指示灯
     Delay_mSec( 500 );
     Feed_WDT();
     LED_ON( LED1 );
-    printf("..............system start..............\r\n");
+    HT_Flash_ByteRead(dev_sn, DEVICE_SN_ADDR, 16);
+
+    printf( "..............system start..............\r\n" );
+    printf("device sn=%s \n", dev_sn);
+
     while ( 1 ) {
         currTime = OSTimeGet();
         if ( currTime > 2000 ) {
@@ -442,18 +511,15 @@ void vMainTask( void* argc )
             FaultHandle( currTime );
         }
 
-        if (currTime - tick_1s >= 1000) {
-            tick_1s = currTime;
-            // card_read(&card);
-        }
-
         //检测CP状态
         CheckCP();
         //充电处理
         ChargerTask();
 
-        extern void ui_display_loop(uint32_t tick);
-        ui_display_loop(tick);
+        read_card(currTime);
+
+        extern void ui_display_loop( uint32_t tick );
+        ui_display_loop( tick );
 
         //		//电表校准测试函数
         //		if(flag_cal)

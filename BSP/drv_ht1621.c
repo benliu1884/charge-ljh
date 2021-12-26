@@ -42,7 +42,7 @@
 static void Ht1621Wr_Data( uint8_t data, uint8_t cnt )
 {
     uint8_t i;
-    // rt_pin_mode( Ht1621_DATA_PIN, PIN_MODE_OUTPUT );
+
     Ht1621_DataOut();
 
     for ( i = 0; i < cnt; i++ ) {
@@ -61,11 +61,11 @@ static void Ht1621Wr_Data( uint8_t data, uint8_t cnt )
 /**
  * @brief Ht1621读某段所映射地址存储数据内容的时序(D0-D3)
  */
-static uint8_t Ht1621Rd_Data( void )
+uint8_t Ht1621Rd_Data( void )
 {
     uint8_t data = 0;
     uint8_t i;
-    // rt_pin_mode( Ht1621_DATA_PIN, PIN_MODE_INPUT );
+
     Ht1621_DataIn();
 
     Ht1621_WR_1();

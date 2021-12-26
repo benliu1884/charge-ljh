@@ -100,7 +100,7 @@ typedef unsigned int time_t;
 
 
 #define LOG(fmt,args ...) do {    \
-    printf("%s (%d):: "fmt, __func__, __LINE__, ##args); \
+    printf(fmt, ##args); \
 }while(0)
 
 

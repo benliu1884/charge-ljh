@@ -28,9 +28,9 @@ uint32_t OSTimeGet (void)
 {
 	uint32_t  xTicks;
 	
-	//Disable_Int();
+	Disable_Int();
 	xTicks = xTickCount;
-	//Enable_Int();
+	Enable_Int();
 	
 	return xTicks;
 }

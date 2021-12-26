@@ -1,14 +1,3 @@
-/**
- * @file gcard.h
- * @japy (you@domain.com)
- * @brief goiot M1卡读写操作
- * @version 0.1
- * @date 2019-01-03
- * 
- * @copyright Copyright (c) 2019
- * 
- */
-
 #ifndef _GCARD_H
 #define _GCARD_H
 

@@ -1,13 +1,3 @@
-/**
- * @file gcard.c
- * @japy (you@domain.com)
- * @brief goiot M1卡读写操作
- * @version 0.1
- * @date 2019-01-03
- *
- * @copyright Copyright (c) 2019
- *
- */
 #include "gcard.h"
 #include "tiny_aes.h"
 #include "uart.h"
@@ -67,7 +57,7 @@ int m1_write_block( int section, int block, const char* data );
 #define MT_READ_ID_OFFSET 6
 #define MT_READ_BLOCK_DATA_OFFSET 8
 
-#define MT_DELAY_TIME 40
+#define MT_DELAY_TIME 80
 
 #define MT_BUFFER_SIZE 64
 static unsigned char io_buffer[ MT_BUFFER_SIZE ];  //发送和接收缓冲区
@@ -705,15 +695,17 @@ int card_read( CardInfo* card )
     ret = m1_read_serial_id( ( char* )in_temp );
     if ( ret != CR_SUCESS )
         return ret;
-    printf("read card success..\r\n");
+
     memcpy( card->serialid, in_temp, 4 );
     tiny_aes_setkey_enc( &ctx, aes_seed_keya, 128 );
     tiny_aes_crypt_ecb( &ctx, AES_ENCRYPT, in_temp, out_temp );
     memcpy( current_keya, out_temp, 6 );
-
+    // printf("key= %02x%02x%02x%02x%02x%02x \n", out_temp[0], out_temp[1], out_temp[2], out_temp[3], out_temp[4], out_temp[5]);
     ret = m1_auth_keya( base_sector + 1, ( const char* )current_keya );  //扇区1
-    if ( ret != CR_SUCESS )
+    if ( ret != CR_SUCESS ) {
+        printf("sector1 auth failed.\r\n");
         return CR_INVALID;
+    }
     ret = m1_read_block( base_sector + 1, 1, data );
     if ( ret == CR_SUCESS ) {
         USERBLOCK_1_1* p = ( USERBLOCK_1_1* )data;
@@ -721,8 +713,10 @@ int card_read( CardInfo* card )
     }
 
     ret = m1_auth_keya( base_sector + 2, ( const char* )current_keya );  //扇区2
-    if ( ret != CR_SUCESS )
+    if ( ret != CR_SUCESS ) {
+        printf("sector2 auth failed.\r\n");
         return CR_INVALID;
+    }
 
     ret = m1_read_block( base_sector + 2, 0, data );
     if ( ret == CR_SUCESS ) {
@@ -750,6 +744,7 @@ int card_read( CardInfo* card )
             }
         }
     }
+
     return ret;
 }
 
@@ -782,31 +777,9 @@ void io_delay( int ms )
 {
     extern void Delay_mSec( int mSec );
     Delay_mSec( ms );
-    // usleep(ms*1000);
 }
 
 int init_gcard_device( int device, int baudrate )
 {
     return 0;
 }
-
-// int init_gcard_device(const char *path, int baudrate)
-//{
-//    const char *val;
-
-//    gcard_dev = open_uart_dev(path, baudrate, 0, 8, 0);
-
-//    val = get_config("sector");
-//    if(val) {
-//        base_sector = atoi(val);
-//    }
-//    else base_sector = 6;
-//    val = get_config("seedkey");
-//    if(val) {
-//        memcpy(aes_seed_keya,val,16);		//KEY_A seed key
-//    }
-//    else
-//        memcpy(aes_seed_keya,"hellowGoiot2018",16);		//KEY_A seed key
-//    MT_LOG("seedkey:%s, basesector:%d",aes_seed_keya,base_sector);
-//    return 0;
-//}
