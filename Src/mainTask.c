@@ -127,15 +127,17 @@ void CheckCP( void )
             //			}
         }
 
-        // cp 12V->9V/6V  插枪开始充电
-        // if ( curState == CP_9V || curState == CP_6V ) {
-        //     StartCharger( 1 , NULL);
-        // }
-        if (curState != CP_6V && curState != CP_9V) {
-            charger.gun[0].startFlag = 0;
+        // cp 12V->9V/6V
+        if ( curState == CP_9V || curState == CP_6V ) {
+            // StartCharger( 1 , NULL); // 插枪开始充电
+            if (charger.gun[ 0 ].gunState != SysState_Finish) {
+                charger.gun[ 0 ].gunState = SysState_Ready;
+            }
         }
-
         charger.gun[ 0 ].CP_STAT = curState;
+    }
+    if (curState != CP_6V || curState != CP_9V) {
+        charger.gun[0].startFlag = 0;
     }
 }
 
@@ -169,7 +171,7 @@ void FaultHandle( uint32_t currTime )
 {
     static uint32_t tick_temp   = 0;
     static uint32_t tick_charge = 0;
-    //获取cp电压
+    //获取cp电压;
     CP_TypeDef current_cp_state = GetCPState();
 
     if ( currTime - tick_temp >= 4000 ) {
@@ -451,7 +453,7 @@ void read_card(uint32_t tick)
         // if (strcmp(dev_sn, card.userid) == 0)
         if (1)
         {
-            printf( "read card success..\r\n" );
+            printf( "read card success..%d\r\n" , charger.gun[ 0 ].gunState);
             last_read_card = tick;
             if ( charger.gun[ 0 ].gunState == SysState_WORKING ) {
                 if (memcmp(card.serialid, charger.gun[ 0 ].card.serialid, 4) == 0) {
@@ -459,7 +461,7 @@ void read_card(uint32_t tick)
                 } else {
                     set_read_card_flag(3);
                 }
-            } else if ( charger.gun[ 0 ].gunState == SysState_NONE ) {
+            } else if ( charger.gun[ 0 ].gunState == SysState_Ready ) {
                 StartCharger( 1, &card);
             } else {
                 set_read_card_flag(3);

@@ -413,10 +413,10 @@ static void GuiDisplay_ChgStatic( void )
     }
 }
 
+static uint8_t show_type = 0;
+
 void LcdDisplay_ChargeInfo(void)
 {
-    static uint8_t show_type = 0;
-
     LcdDisplay( 16, 0x0F, LCD_CLEAR );
     LcdDisplay( 17, 0x0F, LCD_CLEAR );
     LcdDisplay( 18, 0x0F, LCD_CLEAR );
@@ -482,6 +482,7 @@ static void GuiDisplay_Work( uint32_t tick )
     }
 
     if ( _gui.last_state != _gui.state ) {
+        show_type = 0;
         LcdDisplay( 0, 0x01, LCD_CLEAR );            //
         // LcdDisplay( 27, 0x08, LCD_DISPLAY );         //已充
         LcdDisplay( 15, 0x04, LCD_DISPLAY );         //实时信息
